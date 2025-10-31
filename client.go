@@ -15,7 +15,6 @@ var Upgrader = websocket.Upgrader{
 	// Allow cross-origin for development (remove in production)
 	CheckOrigin: func(r *http.Request) bool {
 		origin := r.Header.Get("Origin")
-		log.Printf("Origin: %s", r.Header.Get("Origin"))
 		return origin == os.Getenv("APP_ORIGIN")
 	},
 }
@@ -109,9 +108,10 @@ func (c *Client) writePump() {
 	}()
 	
 	for msg := range c.send{
-		newMessage := &Message{
-			Username: c.username,
-			Message: string(msg),
+		var newMessage Message
+		if err := json.Unmarshal(msg, &newMessage); err != nil {
+			log.Fatal("json unmarshal error:", err)
+			continue
 		}
 
 		if err := c.conn.WriteJSON(newMessage); err != nil {
@@ -139,7 +139,22 @@ func (c *Client) readPump() {
 			break;
 		}
 		
-		c.hub.broadcast <- raw
+		message := string(raw);
+
+		jsonMessage := &Message{
+			Username: c.username,
+			Message: message,
+		}
+
+		byteSlice, err := json.Marshal(jsonMessage)
+
+		if err != nil {
+			log.Fatal("Json marshal error:", err)
+		}
+
+		//todo: need to turn raw into string, and marshal into json format to include this clients username when sending.
+
+		c.hub.broadcast <- byteSlice
 
 	}
 }
