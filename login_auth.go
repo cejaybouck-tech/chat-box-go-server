@@ -67,7 +67,7 @@ func addUserToFile(users map[string]string, username string, password string) er
 	return os.WriteFile(userPath, data, 0644)
 }
 
-func IsValidLogin(username string, password string) error {
+func IsValidLogin(hub *Hub, username string, password string) error {
 	users, err := readUsers()
 
 	if(err != nil) {
@@ -85,6 +85,16 @@ func IsValidLogin(username string, password string) error {
 
 	if (password != userPassword) {
 		return errors.New("password is incorrect")
+	}
+
+	for client := range hub.clients {
+		if(client.username == username) {
+			return errors.New("User is already logged in")
+		}
+	}
+
+	if (!ok) {
+
 	}
 
 	return nil

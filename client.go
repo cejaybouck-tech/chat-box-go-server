@@ -39,8 +39,14 @@ type AuthResponse struct {
 }
 
 type Message struct {
-	Username string `json:"username"`
-	Message string `json:"message"`
+	Type 		string `json:"type"`
+	Username	string `json:"username"`
+	Message 	string `json:"message"`
+}
+
+type UpdateUsersMessage struct {
+	Type	string	`json:"type"`
+	Users	[]string `json:"users"`
 }
 
 func ServeWebSockets(hub *Hub, w http.ResponseWriter, r *http.Request) {
@@ -73,7 +79,7 @@ func ServeWebSockets(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	}
 
 	//check if user exists and if password is correct, will create user if one doesnt exist
-	if err := IsValidLogin(authMsg.Username, authMsg.Password); err != nil {
+	if err := IsValidLogin(hub, authMsg.Username, authMsg.Password); err != nil {
 			writeAuthError(conn, err.Error())
 			return;
 		}
@@ -87,10 +93,27 @@ func ServeWebSockets(hub *Hub, w http.ResponseWriter, r *http.Request) {
 
 	client.hub.register <- client
 
+	//add send message to update connected client with all currently logged users
+	users := make([]string, 0, len(hub.clients))
+	users = append(users, authMsg.Username)
+
+	for userClient := range hub.clients {
+		users = append(users, userClient.username)
+	}
+
+	//Send update users message
+	if err := conn.WriteJSON(UpdateUsersMessage {
+		Type: "users",
+		Users: users,
+	}); err != nil {
+			log.Println("Write error:", err)
+	}
+
 	go client.writePump()
 	go client.readPump()
 	
 }
+
 func writeAuthError(conn *websocket.Conn, msg string) {
 	conn.WriteJSON(AuthResponse{
 		Type:    "auth_response",
@@ -110,7 +133,7 @@ func (c *Client) writePump() {
 	for msg := range c.send{
 		var newMessage Message
 		if err := json.Unmarshal(msg, &newMessage); err != nil {
-			log.Fatal("json unmarshal error:", err)
+			log.Println("json unmarshal error:", err)
 			continue
 		}
 
@@ -138,23 +161,8 @@ func (c *Client) readPump() {
 			log.Println("Failed to read message:", err)
 			break;
 		}
-		
-		message := string(raw);
 
-		jsonMessage := &Message{
-			Username: c.username,
-			Message: message,
-		}
-
-		byteSlice, err := json.Marshal(jsonMessage)
-
-		if err != nil {
-			log.Fatal("Json marshal error:", err)
-		}
-
-		//todo: need to turn raw into string, and marshal into json format to include this clients username when sending.
-
-		c.hub.broadcast <- byteSlice
+		c.hub.broadcast <- raw
 
 	}
 }

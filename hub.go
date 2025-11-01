@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 )
 
@@ -10,6 +11,16 @@ type Hub struct {
 	broadcast chan []byte //raw JSON bytes
 	register chan *Client
 	unregister chan *Client
+}
+
+type UserJoinMessage struct {
+	Type	string	`json:"type"`
+	UName	string	`json:"uname"`
+}
+
+type UserLeaveMessage struct {
+	Type	string	`json:"type"`
+	UName	string	`json:"uname"`
 }
 
 
@@ -28,11 +39,35 @@ func (h *Hub) Run() {
 		//handle registers
 		case client := <-h.register:
 			h.clients[client] = true
+			byteSlice, err := json.Marshal(&Message{
+				Type: "user_joined",
+				Username: client.username,
+				Message: "",
+			})
+
+			if err != nil {
+				log.Printf("Failed to marshal join message: %s", err.Error())
+				return;
+			}
+
+			h.broadcast <- byteSlice
 			log.Printf("Client connected - total: %d", len(h.clients))
 
 		//handle unregisters
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
+				byteSlice, err := json.Marshal(&Message{
+					Type: "user_left",
+					Username: client.username,
+					Message: "",
+				})
+
+				if err != nil {
+					log.Printf("Failed to marshal join message: %s", err.Error())
+					return;
+				}
+
+				h.broadcast <- byteSlice
 				delete(h.clients, client)
 				close(client.send)
 				log.Printf("Client disconnected - total: %d", len(h.clients))
