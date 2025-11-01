@@ -60,7 +60,8 @@ func ServeWebSockets(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	//read auth message
 	_, msg, err := conn.ReadMessage()
 	if err != nil {
-		log.Printf("Read message failed: %v", err)
+		
+		writeAuthError(conn, "Server failed to read message: "+ err.Error())
 		conn.Close()
 		return;
 	}

@@ -13,16 +13,6 @@ type Hub struct {
 	unregister chan *Client
 }
 
-type UserJoinMessage struct {
-	Type	string	`json:"type"`
-	UName	string	`json:"uname"`
-}
-
-type UserLeaveMessage struct {
-	Type	string	`json:"type"`
-	UName	string	`json:"uname"`
-}
-
 
 func NewHub() *Hub {
 	return &Hub{
