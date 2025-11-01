@@ -89,7 +89,7 @@ func IsValidLogin(hub *Hub, username string, password string) error {
 
 	for client := range hub.clients {
 		if(client.username == username) {
-			return errors.New("User is already logged in")
+			return errors.New("user is already logged in")
 		}
 	}
 
